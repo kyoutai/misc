@@ -5,6 +5,7 @@ import argparse
 
 par = argparse.ArgumentParser(description="bar")
 par.add_argument('file', help='input file', nargs="+")
+par.add_argument('-o', '--outfile', help='output file')
 args = par.parse_args()
 
 # 図の体裁
@@ -39,4 +40,7 @@ for idx, i in enumerate(args.file):
 # ax.set_xlabel('x_axis')
 # ax.set_ylabel('y_axis')
 plt.tight_layout()
-plt.show()
+if args.outfile:
+    fig.savefig(args.outfile)
+else:
+    plt.show()

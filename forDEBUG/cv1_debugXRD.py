@@ -34,7 +34,6 @@ def AtomFactorO(ang):            # ang: 2theta
     return fs
 
 
-
 Q, fss = np.empty_like(theta), np.empty_like(theta)
 fso, foo = np.empty_like(theta), np.empty_like(theta)
 for idx, i in enumerate(theta):
@@ -45,50 +44,25 @@ for idx, i in enumerate(theta):
 
 # 散乱ベクトルQ導出。Q:{111}, P{022} それぞれのピーク
 x = open("xrd.dat", "w")
-# x.write("#Natoms={}, alpha_quartz={}, include_Lorch={}, theta={}, {}\n".format(
-#     args.atoms, str(args.alpha), str(args.lorch), args.theta[0], args.theta[1]))
 x.write("UNITS ENERGY=kcal/mol LENGTH=A TIME=fs\n")
 
 # COORDINATION を使用して、従来のDISTANCE, CUSTOM, COMBINE, CUSTOM を1行で実現
 # 1. groupの定義
-if args.alpha:
-    sihead = "SI: GROUP ATOMS=1-8"
-    ohead = "O: GROUP ATOMS=9-24"
-    loops = int(args.atoms/18)
-    for i in range(loops):
-        if i:
-            sihead += ",{}-{}".format(i*18+1, i*18+6)
-            ohead += ",{}-{}".format(i*18+7, i*18+18)
-    x.write(sihead + "\n" + ohead + "\n")
-else:
-    sihead = "SI: GROUP ATOMS=1-8"
-    ohead = "O: GROUP ATOMS=9-24"
-    loops = args.atoms/24
-    for i in range(int(loops)):
-        if i:
-            sihead += ",{}-{}".format(i*24+1, i*24+8)
-            ohead += ",{}-{}".format(i*24+9, i*24+24)
-    x.write(sihead + "\n" + ohead + "\n")
+x.write("SI: GROUP ATOMS=1-{:d}".format(int(args.atoms/3)))
 
 # 3. COORDINATION 本体の定義
-cooSS = "ss{}: COORDINATION GROUPA=SI SWITCH={}"
-cooSO = "so{}: COORDINATION GROUPA=SI GROUPB=O SWITCH={}"
-cooOO = "oo{}: COORDINATION GROUPA=O SWITCH={}"
-# Q, coord = [Q0, Q1], [cooSS, cooSO, cooOO]
+# ここでは、sin(x)/x*Lorch を定義する
+coo = "coo{}: COORDINATION GROUPA=SI SWITCH={}"
 if args.lorch:
     x.write("#MUST USE lmp_shik_nolorch\n")
     FUNC = "sin({:.4f}*x)*sin({:.4f}*x)/x/x*{:.4f} R_0=1"
-    Rmax, PI = np.cbrt(args.atoms/24)*7.5*np.sqrt(3), np.pi
+    Rmax, PI = 25, np.pi
     for idx, i in enumerate(Q):
+        # switch = "{CUSTOM FUNC=" + FUNC.format(
+        #     i, PI/Rmax, 2*fss[idx]*Rmax/PI/args.atoms/i) + "}\n" # old ver.
         switch = "{CUSTOM FUNC=" + FUNC.format(
-            i, PI/Rmax, 2*fss[idx]*Rmax/PI/args.atoms/i) + "}\n"
-        x.write(cooSS.format(idx, switch))
-        switch = "{CUSTOM FUNC=" + FUNC.format(
-            i, PI/Rmax, 2*fso[idx]*Rmax/PI/args.atoms/i) + "}\n"
-        x.write(cooSO.format(idx, switch))
-        switch = "{CUSTOM FUNC=" + FUNC.format(
-            i, PI/Rmax, 2*foo[idx]*Rmax/PI/args.atoms/i) + "}\n"
-        x.write(cooOO.format(idx, switch))
+            i, PI/Rmax, Rmax/PI/i) + "}\n"  # Q, PI/Rmax, Rmax/PI/Q
+        x.write(coo.format(idx, switch))
 else:
     exit("under construction...")
     # FUNC = "sin({:.3f}*x)/x*{:.4f} R_0=1"  # sin(Qx)/Qx * f^2/N
@@ -102,14 +76,16 @@ else:
     #     w.write(coord[idx % 3].format(idx//3, switch))
     #     x.write(coord[idx % 3].format(idx//3, switch))
 
-cd = "cd{a}: CUSTOM ARG=ss{a},so{a},oo{a} FUNC=x+y+z+{b} PERIODIC=NO\n"
+# COORD = fsi(Q)**2 + coord * 2*fsi(Q)**2/N の定義
+COO = "COO{a}: CUSTOM ARG=coo{a} FUNC=x*{b}+{c} PERIODIC=NO\n"
 for idx, i in enumerate(Q):
-    x.write(cd.format(a=idx, b=fss[idx]/3+foo[idx]*2/3))
+    coeff = fss[idx]
+    x.write(COO.format(a=idx, b=2*coeff/args.atoms*3, c=coeff))
 
 # output colvar
-PRINT = "PRINT ARG=cd0"
+PRINT = "PRINT ARG=COO0"
 for idx, i in enumerate(Q[1:]):
-    PRINT += ",cd{}".format(idx+1)
+    PRINT += ",COO{}".format(idx+1)
 PRINT += " FILE=COLVAR STRIDE=500"
 x.write(PRINT)
 x.close()
