@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 par = argparse.ArgumentParser(description="bar")
-par.add_argument('file', help='input file')
+par.add_argument('file', help='input file', nargs="+")
 par.add_argument('-e', '--elem', choices=["Si", "Na"], default="Si")
 par.add_argument('-r', '--rc', help='Lorch cutoff, Rc', default=25, type=int)
 args = par.parse_args()
@@ -34,7 +34,19 @@ lam = 1.5406
 Ttheta = np.linspace(15, 80, 651)
 # Ttheta = np.linspace(15, 50, 351)
 Q = 4 * np.pi * np.sin(Ttheta / 360 * np.pi) / lam
-hoge = np.sin(Ttheta/360*np.pi)/lam
+# hoge = 4 * np.pi * np.sin(14.955 / 180 * np.pi) / lam
+# A = (hoge/4/np.pi)**2
+# f5 = (4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
+#       1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
+#       0.560991*np.exp(-0.405878*A)+0.0797120)
+# print(hoge, f5)
+# huga = 4 * np.pi * np.sin(26.5495 / 180 * np.pi) / lam
+# A = (huga/4/np.pi)**2
+# f5 = (4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
+#       1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
+#       0.560991*np.exp(-0.405878*A)+0.0797120)
+# print(huga, f5)
+# exit()
 
 fsi = np.zeros_like(Ttheta)
 # print("atomic scattering coeff, scattering factor, 2theta")
@@ -47,14 +59,14 @@ if args.elem == "Si":
 elif args.elem == "Na":
     for idx, q in enumerate(Q):
         A = (q / 4 / np.pi)**2
-        # fsi[idx]=(4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
-        #           1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
-        #           0.560991*np.exp(-0.405878*A)+0.0797120)
-        fsi[idx] = (4.7626*np.exp(-3.2550*A) + 3.1736*np.exp(-8.84220*A) +
-                    1.2674*np.exp(-0.3136*A) + 1.1128*np.exp(-129.424*A) +
-                    0.676)
+        fsi[idx] = (4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
+                    1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
+                    0.560991*np.exp(-0.405878*A)+0.0797120)
         # International Tables for Crystallography: Mathematical, Physical and
         # Chemical Tables, ed Prince E (Springer, Berlin), Vol C, pp 554–595.
+        # fsi[idx] = (4.7626*np.exp(-3.2550*A) + 3.1736*np.exp(-8.84220*A) +
+        #             1.2674*np.exp(-0.3136*A) + 1.1128*np.exp(-129.424*A) +
+        #             0.676)
 else:
     exit("wrong element! check your argument: -e or --elem")
 
@@ -65,7 +77,7 @@ def Lorch(r, Rc):  # Window Func.
 
 
 class XRD():
-    def __init__(self, frname):
+    def __init__(self, frname, india):
         with open(frname) as f:
             lines = np.array(f.readlines(), dtype=object)
         self.atoms = int(lines[3])
@@ -88,7 +100,7 @@ class XRD():
         # foo_ave = np.average(self.foo, axis=0)
         # foo_std = np.std(self.foo, axis=0)
         # ax.plot(Ttheta, foo_ave, "b--", label="hoge")
-        ax.plot(Ttheta, morch_ave, "r-", label="crystal")
+        ax.plot(Ttheta, morch_ave, "-", color=color[india])
         # ax.fill_between(Ttheta, foo_ave-foo_std, foo_ave+foo_std)
         ax.set_xlabel('2theta')
         ax.set_ylabel('Intensity')
@@ -141,7 +153,7 @@ class XRD():
         data[:, :, :2] = data[:, :, :2].astype(int)
         data[:, :, 3:] = data[:, :, 3:].astype(float)
         start, end = 0, self.steps
-        start, end = 0, 1
+        start, end = 0,1
         loops = end - start
         self.foo = np.zeros((loops, int(Ttheta.shape[0])))
         self.lorch = np.zeros((loops, int(Ttheta.shape[0])))
@@ -183,7 +195,10 @@ class XRD():
                 # self.foo[IDX, idx] += fsi[idx]**2
 
 
-a = XRD(args.file)
+# a = XRD(args.file)
+color = ["red", "green", "blue", "purple"]
+for FR, fr in enumerate(args.file):
+    a = XRD(fr, FR)
 # diff = a.lorch[0, :-1] - a.lorch[0, 1:]  # 増加量
 # diff = diff > 0
 # print("\nlorch\n")
