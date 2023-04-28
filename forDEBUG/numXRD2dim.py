@@ -6,10 +6,11 @@ import argparse
 # http://www.pnas.org/cgi/doi/10.1073/pnas.1803919115
 # SIO2 全原子でXRD 強度を求めるプログラム。
 par = argparse.ArgumentParser(description="bar")
-par.add_argument('file', help='input file')
+par.add_argument('file', help='input file', nargs="+")
 par.add_argument('-o', '--outfile', help='output name')
 # par.add_argument('--onestep', action="store_true")
 args = par.parse_args()
+mark = ["-r", "-g", "-b", "-c", "-m", "-y"]
 
 # 図の体裁
 plt_dic = {}
@@ -25,15 +26,15 @@ plt_dic['xtick.major.size'] = 5
 plt_dic['xtick.minor.size'] = 3
 plt_dic['xtick.direction'] = 'in'
 plt_dic['savefig.bbox'] = 'tight'
-plt_dic['savefig.dpi'] = 150
+plt_dic['savefig.dpi'] = 300
 plt_dic['savefig.transparent'] = True
 plt.rcParams.update(plt_dic)
-fig, ax = plt.subplots(nrows=2)
+fig, ax = plt.subplots()
 
 # 原子散乱因子と、散乱定数Q を設定
 lam = 1.5406
 Ttheta = np.linspace(15, 80, 651)
-# Ttheta = np.linspace(15, 40, 251)
+Ttheta = np.linspace(15, 40, 251)
 Q = 4 * np.pi * np.sin(Ttheta / 360 * np.pi) / lam
 
 fsi = np.zeros_like(Ttheta)
@@ -53,7 +54,8 @@ def Lorch(r, Rc):  # Window Func.
 
 
 class XRD():
-    def __init__(self, frname):
+    # ファイル読み込み、導出したXRDピークをプロットする。
+    def __init__(self, india, frname):
         with open(frname) as f:
             lines = np.array(f.readlines(), dtype=object)
         self.atoms = int(lines[3])
@@ -89,7 +91,7 @@ class XRD():
             foo[idx] = fo[idx] ** 2
 
         start, end = 0, self.steps
-        start, end = 0, 1
+        # start, end = 0, 1
         loops = end - start
         self.lorch = np.zeros((loops, int(Ttheta.shape[0])))
         SS = np.zeros((int(Ttheta.shape[0])))
@@ -138,13 +140,6 @@ class XRD():
 
                 self.lorch[IDX, idx] += fss[idx] * self.siatoms
                 self.lorch[IDX, idx] += foo[idx] * self.oatoms
-            # if args.onestep:
-            #     ax.plot(Ttheta, SS, "b-", label="S-S")
-            #     ax.plot(Ttheta, SO, "g-", label="S-O")
-            #     ax.plot(Ttheta, OO, "-", color="black", label="O-O")
-            #     ax.legend()
-            #     plt.show()
-            #     exit("onestep end")
 
         lorch_ave = np.average(self.lorch, axis=0)/self.atoms
         lorch_std = np.std(self.lorch, axis=0)/self.atoms
@@ -154,22 +149,18 @@ class XRD():
         SS = SS/loops + fss[idx] / 3
         SO = SO/loops
         OO = OO/loops + foo[idx] / 3 * 2
-        ax[0].plot(Ttheta, SS, "b-", label="S-S")
-        ax[0].plot(Ttheta, SO, "g-", label="S-O")
-        ax[0].plot(Ttheta, OO, "-", color="black", label="O-O")
-        ax[1].plot(Ttheta, lorch_ave, "r-", label="3**0.5 * L/2")
-        ax[1].fill_between(Ttheta,
-                           lorch_ave+lorch_std, lorch_ave-lorch_std, alpha=0.1)
-        ax[0].set_xlabel('2theta')
-        ax[1].set_xlabel('2theta')
-        ax[0].set_title('each atom pairs')
-        ax[1].set_title('all xrd peak')
-        ax[0].set_ylabel('Intensity')
-        ax[0].legend()
-        plt.tight_layout()
+        ax.plot(Ttheta, lorch_ave, mark[india])
+        ax.fill_between(Ttheta,
+                        lorch_ave+lorch_std, lorch_ave-lorch_std, alpha=0.1)
+        ax.set_xlabel('2theta')
+        ax.set_ylabel('intensity')
+        ax.set_title('all xrd peak')
 
 
-a = XRD(args.file)
+for indexing, frname in enumerate(args.file):
+    print(frname, "now loading...")
+    a = XRD(indexing, frname)
+ax.set_ylim(-100, 200)
 if args.outfile:
     plt.savefig(args.outfile, dpi=300)
 else:

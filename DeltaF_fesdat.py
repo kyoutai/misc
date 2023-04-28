@@ -17,8 +17,8 @@ par = argparse.ArgumentParser(description=text, formatter_class=HelpFormat)
 par.add_argument("file", help="input Free Energy Surface data")
 par.add_argument('-t', '--temp', type=int, default=2700,
                  help="系の温度")
-par.add_argument('--threshold', type=int, default=150,
-                 help="2相の区別境界")
+par.add_argument('-r', '--range', type=int, nargs=3, default=[0, 150, 300],
+                 help="CV範囲の最小値、準安定状態境界の値、CV範囲の最大値")
 par.add_argument('--unit', choices=["kj", "kcal"], default="kj",
                  help="FES エネルギー単位を指定")
 par.add_argument('-o', '--outfile', help="outfile name")
@@ -26,18 +26,24 @@ args = par.parse_args()
 
 # set constant
 cal_to_kj = 4.184
+
 kB = 1.380649e-23               # J/K
 mol = 6.0221407e23
-kBT = kB * mol * args.temp * 1e-3  # kj/mol
+kBT = kB * mol * args.temp * 1e-3  # kcal/mol
+# if args.unit == "kj":
+#     kBT = kB * mol * args.temp * 1e-3 * cal_to_kj  # kj/mol
+MIN, THR, MAX = args.range[0], args.range[1], args.range[2]
 
 buff = np.loadtxt(args.file)
 cv, fe = buff[:, 0], buff[:, 1]
 fe = np.exp((-fe+np.min(fe)) / kBT)
-mask_g = np.where((0 < cv) & (cv < args.threshold), True, False)
-mask_c = np.where((args.threshold < cv) & (cv < 300), True, False)
+mask_g = np.where((MIN < cv) & (cv < THR), True, False)
+mask_c = np.where((THR < cv) & (cv < MAX), True, False)
 fglass = np.sum(fe * mask_g)
 fcryst = np.sum(fe * mask_c)
 deltaF = -kBT * np.log(fglass/fcryst)
+if args.unit == "kj":
+    deltaF *= cal_to_kj
 print(fglass/fcryst)
 print(kBT)
 exit(deltaF)

@@ -5,11 +5,16 @@ import argparse
 
 # http://www.pnas.org/cgi/doi/10.1073/pnas.1803919115
 # SIO2 全原子でXRD 強度を求めるプログラム。
+# 前作XRD2dim.pyと異なり、原子種類別のピークは出さない。
+# 5種類のLorch関数使用したXRDピークをまとめて出すことができます。
 par = argparse.ArgumentParser(description="bar")
 par.add_argument('file', help='input file')
+par.add_argument('-l', '--lattice', help='lattice parameter', default="14.3")
 par.add_argument('-o', '--outfile', help='output name')
 # par.add_argument('--onestep', action="store_true")
 args = par.parse_args()
+
+lattice = float(args.lattice)
 
 # 図の体裁
 plt_dic = {}
@@ -28,12 +33,12 @@ plt_dic['savefig.bbox'] = 'tight'
 plt_dic['savefig.dpi'] = 150
 plt_dic['savefig.transparent'] = True
 plt.rcParams.update(plt_dic)
-fig, ax = plt.subplots(nrows=2)
+fig, ax = plt.subplots()
 
 # 原子散乱因子と、散乱定数Q を設定
 lam = 1.5406
 Ttheta = np.linspace(15, 80, 651)
-# Ttheta = np.linspace(15, 40, 251)
+Ttheta = np.linspace(15, 50, 351)
 Q = 4 * np.pi * np.sin(Ttheta / 360 * np.pi) / lam
 
 fsi = np.zeros_like(Ttheta)
@@ -89,12 +94,17 @@ class XRD():
             foo[idx] = fo[idx] ** 2
 
         start, end = 0, self.steps
-        start, end = 0, 1
+        start, end = 0, 1       # only onesterp
         loops = end - start
+        self.Arc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Brc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Crc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Drc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.nolorch = np.zeros((loops, int(Ttheta.shape[0])))
         self.lorch = np.zeros((loops, int(Ttheta.shape[0])))
-        SS = np.zeros((int(Ttheta.shape[0])))
-        SO = np.zeros((int(Ttheta.shape[0])))
-        OO = np.zeros((int(Ttheta.shape[0])))
+        # SS = np.zeros((int(Ttheta.shape[0])))
+        # SO = np.zeros((int(Ttheta.shape[0])))
+        # OO = np.zeros((int(Ttheta.shape[0])))
 
         for IDX, i in enumerate(range(start, end)):
             if i % 10 == 0:
@@ -110,11 +120,7 @@ class XRD():
             drss = dr[ss_idx]
             drso = dr[so_idx]
             droo = dr[oo_idx]
-            Rc = 25
-            # カットオフ Rc 以上の値を除去
-            # np.place(drss, drss > Rc, 0)  # dr upper limit: Rc
-            # np.place(drso, drso > Rc, 0)  # dr upper limit: Rc
-            # np.place(droo, droo > Rc, 0)  # dr upper limit: Rc
+            # 体格成分 0 消去
             drss = drss[np.nonzero(drss)]
             drso = drso[np.nonzero(drso)]
             droo = droo[np.nonzero(droo)]
@@ -122,54 +128,76 @@ class XRD():
             for idx, q in enumerate(Q):
                 # si-si XRD
                 x = q * drss
-                Lc = Lorch(drss, Rc)
-                SS[idx] += np.sum(np.sin(x)/x * Lc * fss[idx] * 2)/self.siatoms
+                Ac = Lorch(drss, lattice*np.sqrt(3))
+                Bc = Lorch(drss, lattice)
+                Cc = Lorch(drss, lattice*np.sqrt(3)*0.5)
+                Dc = Lorch(drss, lattice*0.5)
+                Lc = Lorch(drss, 20)
+                self.Arc[IDX, idx] += np.sum(np.sin(x)/x * Ac) * fss[idx] * 2
+                self.Brc[IDX, idx] += np.sum(np.sin(x)/x * Bc) * fss[idx] * 2
+                self.Crc[IDX, idx] += np.sum(np.sin(x)/x * Cc) * fss[idx] * 2
+                self.Drc[IDX, idx] += np.sum(np.sin(x)/x * Dc) * fss[idx] * 2
+                self.nolorch[IDX, idx] += np.sum(np.sin(x)/x * fss[idx] * 2)
                 self.lorch[IDX, idx] += np.sum(np.sin(x)/x * Lc * fss[idx] * 2)
                 # si-o XRD
-                x = q * droo
-                Lc = Lorch(droo, Rc)
-                OO[idx] += np.sum(np.sin(x)/x * Lc * foo[idx] * 2)/self.siatoms
-                self.lorch[IDX, idx] += np.sum(np.sin(x)/x * Lc * foo[idx] * 2)
-                # o-o XRD
                 x = q * drso
-                Lc = Lorch(drso, Rc)
-                SO[idx] += np.sum(np.sin(x)/x * Lc * fso[idx] * 2)/self.siatoms
+                Ac = Lorch(drso, lattice*np.sqrt(3))
+                Bc = Lorch(drso, lattice)
+                Cc = Lorch(drso, lattice*np.sqrt(3)*0.5)
+                Dc = Lorch(drso, lattice*0.5)
+                Lc = Lorch(drso, 20)
+                self.Arc[IDX, idx] += np.sum(np.sin(x)/x * Ac) * fso[idx] * 2
+                self.Brc[IDX, idx] += np.sum(np.sin(x)/x * Bc) * fso[idx] * 2
+                self.Crc[IDX, idx] += np.sum(np.sin(x)/x * Cc) * fso[idx] * 2
+                self.Drc[IDX, idx] += np.sum(np.sin(x)/x * Dc) * fso[idx] * 2
+                self.nolorch[IDX, idx] += np.sum(np.sin(x)/x * fso[idx] * 2)
                 self.lorch[IDX, idx] += np.sum(np.sin(x)/x * Lc * fso[idx] * 2)
-
+                # o-o XRD
+                x = q * droo
+                Ac = Lorch(droo, lattice*np.sqrt(3))
+                Bc = Lorch(droo, lattice)
+                Cc = Lorch(droo, lattice*np.sqrt(3)*0.5)
+                Dc = Lorch(droo, lattice*0.5)
+                Lc = Lorch(droo, 20)
+                self.Arc[IDX, idx] += np.sum(np.sin(x)/x * Ac) * foo[idx] * 2
+                self.Brc[IDX, idx] += np.sum(np.sin(x)/x * Bc) * foo[idx] * 2
+                self.Crc[IDX, idx] += np.sum(np.sin(x)/x * Cc) * foo[idx] * 2
+                self.Drc[IDX, idx] += np.sum(np.sin(x)/x * Dc) * foo[idx] * 2
+                self.nolorch[IDX, idx] += np.sum(np.sin(x)/x * foo[idx] * 2)
+                self.lorch[IDX, idx] += np.sum(np.sin(x)/x * Lc * foo[idx] * 2)
+                # sum coefficient
+                self.Arc[IDX, idx] += fss[idx] * self.siatoms
+                self.Arc[IDX, idx] += foo[idx] * self.oatoms
+                self.Brc[IDX, idx] += fss[idx] * self.siatoms
+                self.Brc[IDX, idx] += foo[idx] * self.oatoms
+                self.Crc[IDX, idx] += fss[idx] * self.siatoms
+                self.Crc[IDX, idx] += foo[idx] * self.oatoms
+                self.Drc[IDX, idx] += fss[idx] * self.siatoms
+                self.Drc[IDX, idx] += foo[idx] * self.oatoms
+                self.nolorch[IDX, idx] += fss[idx] * self.siatoms
+                self.nolorch[IDX, idx] += foo[idx] * self.oatoms
                 self.lorch[IDX, idx] += fss[idx] * self.siatoms
                 self.lorch[IDX, idx] += foo[idx] * self.oatoms
-            # if args.onestep:
-            #     ax.plot(Ttheta, SS, "b-", label="S-S")
-            #     ax.plot(Ttheta, SO, "g-", label="S-O")
-            #     ax.plot(Ttheta, OO, "-", color="black", label="O-O")
-            #     ax.legend()
-            #     plt.show()
-            #     exit("onestep end")
 
+        Arc_ave = np.average(self.Arc, axis=0)/self.atoms
+        Brc_ave = np.average(self.Brc, axis=0)/self.atoms
+        Crc_ave = np.average(self.Crc, axis=0)/self.atoms
+        Drc_ave = np.average(self.Drc, axis=0)/self.atoms
+        nolorch_ave = np.average(self.nolorch, axis=0)/self.atoms
         lorch_ave = np.average(self.lorch, axis=0)/self.atoms
-        lorch_std = np.std(self.lorch, axis=0)/self.atoms
-        # print(lorch_std)
-        # label = frname.split("_")[0]
-        # 同一原子ペアは、fsi**2 * Nsi/Nall を足す
-        SS = SS/loops + fss[idx] / 3
-        SO = SO/loops
-        OO = OO/loops + foo[idx] / 3 * 2
-        ax[0].plot(Ttheta, SS, "b-", label="S-S")
-        ax[0].plot(Ttheta, SO, "g-", label="S-O")
-        ax[0].plot(Ttheta, OO, "-", color="black", label="O-O")
-        ax[1].plot(Ttheta, lorch_ave, "r-", label="3**0.5 * L/2")
-        ax[1].fill_between(Ttheta,
-                           lorch_ave+lorch_std, lorch_ave-lorch_std, alpha=0.1)
-        ax[0].set_xlabel('2theta')
-        ax[1].set_xlabel('2theta')
-        ax[0].set_title('each atom pairs')
-        ax[1].set_title('all xrd peak')
-        ax[0].set_ylabel('Intensity')
-        ax[0].legend()
+        ax.plot(Ttheta, Arc_ave, "b-", label="Rc = 1.73L")
+        ax.plot(Ttheta, Brc_ave, "k-", label="Rc = 1.00L")
+        ax.plot(Ttheta, Crc_ave, "g-", label="Rc = 0.87L")
+        ax.plot(Ttheta, Drc_ave, "r-", label="Rc = 0.50L")
+        ax.plot(Ttheta, nolorch_ave, "b--", label="nolorch")
+        ax.plot(Ttheta, lorch_ave, "k--", label="lorch")
+        ax.set_xlabel('2theta')
+        ax.set_title('all xrd peak')
         plt.tight_layout()
 
 
 a = XRD(args.file)
+plt.legend()
 if args.outfile:
     plt.savefig(args.outfile, dpi=300)
 else:

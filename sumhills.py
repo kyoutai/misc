@@ -54,7 +54,8 @@ par.add_argument('-o', '--outfile', help="outfile name")
 par.add_argument("--mintozero", action="store_true")
 args = par.parse_args()
 fig, ax = plt.subplots(ncols=2, figsize=(12, 4))
-cm = plt.get_cmap("gnuplot")
+# cm = plt.get_cmap("gnuplot")
+cm = plt.get_cmap("gnuplot_r")
 num_data = round((args.end) / args.stride)
 
 
@@ -99,7 +100,8 @@ ax[1].set_ylim(-30, args.maximum)
 axpos = ax[1].get_position()
 cbar_ax = fig.add_axes([0.87, axpos.y0, 0.02, axpos.height])
 norm = colors.Normalize(vmin=0, vmax=args.end)
-mappable = ScalarMappable(cmap='gnuplot', norm=norm)
+# mappable = ScalarMappable(cmap='gnuplot', norm=norm)
+mappable = ScalarMappable(cmap='gnuplot_r', norm=norm)
 mappable._A = []
 fig.colorbar(mappable, cax=cbar_ax, label="time(10 ps)")
 # カラーバー位置を調整

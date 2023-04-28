@@ -3,13 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
+# 複数のRc値でlorch関数を掛けてXRDピークを導出するプログラムです
+
 par = argparse.ArgumentParser(description="bar")
 par.add_argument('file', help='input file', nargs="+")
 par.add_argument('-e', '--elem', choices=["Si", "Na"], default="Si")
-par.add_argument('-r', '--rc', help='Lorch cutoff, Rc', default=25, type=int)
+par.add_argument('-l', '--lattice', help='lattice parameter', default="14.3")
 args = par.parse_args()
 
-Rc = args.rc
+lattice = float(args.lattice)
 
 # 図の体裁
 plt_dic = {}
@@ -35,22 +37,8 @@ lam = 1.5406
 Ttheta = np.linspace(15, 80, 651)
 Ttheta = np.linspace(15, 50, 351)
 Q = 4 * np.pi * np.sin(Ttheta / 360 * np.pi) / lam
-# hoge = 4 * np.pi * np.sin(14.955 / 180 * np.pi) / lam
-# A = (hoge/4/np.pi)**2
-# f5 = (4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
-#       1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
-#       0.560991*np.exp(-0.405878*A)+0.0797120)
-# print(hoge, f5)
-# huga = 4 * np.pi * np.sin(26.5495 / 180 * np.pi) / lam
-# A = (huga/4/np.pi)**2
-# f5 = (4.910127*np.exp(-3.281434*A)+3.081783*np.exp(-9.119178*A) +
-#       1.262067*np.exp(-0.102763*A)+1.098938*np.exp(-132.0139*A) +
-#       0.560991*np.exp(-0.405878*A)+0.0797120)
-# print(huga, f5)
-# exit()
 
 fsi = np.zeros_like(Ttheta)
-# print("atomic scattering coeff, scattering factor, 2theta")
 if args.elem == "Si":
     for idx, q in enumerate(Q):  # atom scattering factors
         A = (q / 4 / np.pi)**2  # Ar = (q / 4pi) ** 2
@@ -98,11 +86,17 @@ class XRD():
             self.na_XRD(data)
 
         # plot XRD peak
-        morch_ave = np.average(self.morch, axis=0)
-        # foo_ave = np.average(self.foo, axis=0)
+        Arc_ave = np.average(self.Arc, axis=0)
+        Brc_ave = np.average(self.Brc, axis=0)
+        Crc_ave = np.average(self.Crc, axis=0)
+        Drc_ave = np.average(self.Drc, axis=0)
+        foo_ave = np.average(self.foo, axis=0)
+        ax.plot(Ttheta, Arc_ave, "b-", label="Rc = 1.73L")
+        ax.plot(Ttheta, Brc_ave, "k-", label="Rc = 1.00L")
+        ax.plot(Ttheta, Crc_ave, "g-", label="Rc = 0.87L")
+        ax.plot(Ttheta, Drc_ave, "r-", label="Rc = 0.50L")
+        ax.plot(Ttheta, foo_ave, "b--", label="noLorch")
         # foo_std = np.std(self.foo, axis=0)
-        # ax.plot(Ttheta, foo_ave, "b--", label="hoge")
-        ax.plot(Ttheta, morch_ave, "-", color=color[india])
         # ax.fill_between(Ttheta, foo_ave-foo_std, foo_ave+foo_std)
         ax.set_xlabel('2theta')
         ax.set_ylabel('Intensity')
@@ -117,9 +111,11 @@ class XRD():
         start, end = 0, self.steps
         # start, end = 0, 1
         loops = end - start
+        self.Arc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Brc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Crc = np.zeros((loops, int(Ttheta.shape[0])))
+        self.Drc = np.zeros((loops, int(Ttheta.shape[0])))
         self.foo = np.zeros((loops, int(Ttheta.shape[0])))
-        self.lorch = np.zeros((loops, int(Ttheta.shape[0])))
-        self.morch = np.zeros((loops, int(Ttheta.shape[0])))
         for IDX, i in enumerate(range(start, end)):
             if i % 100 == 0:
                 print("{} progressing...".format(i))
@@ -137,18 +133,24 @@ class XRD():
                 self.siatoms - 1, self.siatoms + 1)[:, 1:].reshape(
                 self.siatoms, self.siatoms - 1).reshape(-1)
             # カットオフ Rc 以上の値を除去
-            self.rc = np.copy(dr.reshape(self.siatoms * (self.siatoms-1)))
-            np.place(self.rc, self.rc > Rc, 0)  # dr upper limit: Rc = lx / 2
-            self.rc = self.rc[np.nonzero(self.rc)]
-            Lc = Lorch(self.rc, Rc)
+            # self.rc = np.copy(dr.reshape(self.siatoms * (self.siatoms-1)))
+            # np.place(self.rc, self.rc > Rc, 0)  # dr upper limit: Rc = lx / 2
+            # self.rc = self.rc[np.nonzero(self.rc)]
+            Ac = Lorch(dr, lattice*np.sqrt(3))      # √3 L
+            Bc = Lorch(dr, lattice)                 # L
+            Cc = Lorch(dr, lattice*np.sqrt(3)*0.5)  # √3/2 L
+            Dc = Lorch(dr, lattice*0.5)             # 1/2 L
             for idx, q in enumerate(Q):
-                x = q * self.rc
+                x = q * dr
                 coeff = fsi[idx] * fsi[idx] / (self.atoms/3)
                 # Lorch half of calc cell
-                self.morch[IDX, idx] += np.sum(np.sin(x) / x * Lc * coeff)
-                self.morch[IDX, idx] += fsi[idx]**2
-                self.foo[IDX, idx] += np.sum(np.sin(x) / x) * coeff
-                self.foo[IDX, idx] += fsi[idx]**2
+                # self.morch[IDX, idx] += np.sum(np.sin(x) / x * Lc * coeff)
+                # self.morch[IDX, idx] += fsi[idx]**2
+                self.Arc[IDX, idx] += np.sum(np.sin(x)/x*Ac*coeff)+fsi[idx]**2
+                self.Brc[IDX, idx] += np.sum(np.sin(x)/x*Bc*coeff)+fsi[idx]**2
+                self.Crc[IDX, idx] += np.sum(np.sin(x)/x*Cc*coeff)+fsi[idx]**2
+                self.Drc[IDX, idx] += np.sum(np.sin(x)/x*Dc*coeff)+fsi[idx]**2
+                self.foo[IDX, idx] += np.sum(np.sin(x)/x)*coeff+fsi[idx]**2
 
     def na_XRD(self, data):
         data[:, :, :2] = data[:, :, :2].astype(int)
@@ -201,20 +203,7 @@ class XRD():
 color = ["red", "green", "blue", "purple"]
 for FR, fr in enumerate(args.file):
     a = XRD(fr, FR)
-# diff = a.lorch[0, :-1] - a.lorch[0, 1:]  # 増加量
-# diff = diff > 0
-# print("\nlorch\n")
-# for i in range(diff.shape[0] - 1):
-#     if diff[i] != diff[i+1]:
-#         print(Ttheta[i], "2 theta")
-# diff = a.foo[0, :-1] - a.foo[0, 1:]  # 増加量
-# diff = diff > 0
-# print("\nfoo\n")
-# for i in range(diff.shape[0] - 1):
-#     if diff[i] != diff[i+1]:
-#         print(Ttheta[i], "2 theta")
 plt.tight_layout()
-# plt.text(40, 0, "(3/2)**0.5 * L")
 ax.set_ylim(-50, 300)
 ax.set_xlim(15, 80)
 ax.set_xlim(15, 50)

@@ -28,11 +28,11 @@ plt_dic['savefig.transparent'] = True
 plt.rcParams.update(plt_dic)
 
 fig, ax = plt.subplots()
+bx = ax.twinx()
 for idx, i in enumerate(args.file):
     data = np.loadtxt(i)
     ax.plot(data[:, 0], data[:, 1], label=i)
-
-    
+    bx.plot(data[:, 0], data[:, 2], label=i)
 
 # fig, ax = plt.subplots(nrows=2, ncols=2)
 # ax[0][0].plot(foo[:, 0], foo[:, 1], "r-")
@@ -47,9 +47,12 @@ for idx, i in enumerate(args.file):
 # ax[0][1].set_title("Si-O")
 # ax[1][0].set_title("O-O")
 # ax[1][1].set_title("all")
-ax.set_xlim(1, 5)
+ax.set_xlim(1, 6)
+ax.set_ylim(0, 16)
+bx.set_ylim(0, 8)
 ax.set_ylabel("g(r)")
-ax.set_xlabel("Å")
+bx.set_ylabel("Coordination Number(r)")
+ax.set_xlabel("r(Å)")
 plt.legend()
 plt.tight_layout()
 if args.out:
