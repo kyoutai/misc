@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 plt.rcParams.update({'legend.fontsize': 12,
                      'axes.labelsize': 20,
+                     'axes.titlesize': 20,
                      "figure.figsize": [7, 3],
                      'xtick.labelsize': 16,
                      'ytick.labelsize': 16})
@@ -28,10 +29,11 @@ if args.switch:
     fr = fr[(fr[:, 0] % 50000 == 0)]  # 要素数を削減して軽量化
 if fr.shape[1] == 2:
     fig, ax = plt.subplots(figsize=(14, 6))
-    ax.plot(fr[:, 0]/10e8, fr[:, 1], ".", markersize=1)
-    ax.set_xlabel('steps (micro sec.)')
-    ax.set_ylabel('CV (XRD Si-Si{111})')
-    ax.plot([np.min(fr[:, 0])/10e8, np.max(fr[:, 0])/10e8], [150, 150], "--r")
+    ax.plot(fr[:, 0]/10e5, fr[:, 1], ".", markersize=1)
+    ax.set_xlabel('steps (nano sec.)')
+    ax.set_ylabel('CV (XRD peak)')
+    ax.plot([np.min(fr[:, 0])/10e5, np.max(fr[:, 0])/10e5], [130, 130], "--r")
+    ax.plot([np.min(fr[:, 0])/10e5, np.max(fr[:, 0])/10e5], [25, 25], "--r")
     # ax.set_xlim(-1, 2)
     name = args.file.split("/")
     if len(name) == 2:
@@ -58,10 +60,11 @@ elif fr.shape[1] == 3:
     print(np.min(fr[:, 2]), np.max(fr[:, 2]))
 else:
     fig, ax = plt.subplots()
-    ax.plot(fr[:, 0]/10e8, fr[:, -1], ".", markersize=1)
-    ax.set_xlabel('steps (micro sec.)')
-    ax.set_ylabel('CV (XRD Si-Si{111})')
-    ax.plot([np.min(fr[:, 0])/10e8, np.max(fr[:, 0])/10e8], [150, 150], "--r")
+    ax.plot(fr[:, 0]/10e5, fr[:, -1], ".", markersize=1)
+    ax.set_xlabel('steps (nano sec.)')
+    ax.set_ylabel('CV (XRD peak)')
+    ax.plot([np.min(fr[:, 0])/10e5, np.max(fr[:, 0])/10e5], [130, 130], "--r")
+    ax.plot([np.min(fr[:, 0])/10e5, np.max(fr[:, 0])/10e5], [25, 25], "--r")
 
 plt.tight_layout()
 if args.outfile:

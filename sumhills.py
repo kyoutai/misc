@@ -59,14 +59,14 @@ cm = plt.get_cmap("gnuplot_r")
 num_data = round((args.end) / args.stride)
 
 
-cnt, cum, mini, maxi = 0, 0, 0, 300
+cnt, cum, mini, maxi = 0, 0, -100, 300
 hilmax, hilmin = 1000, 0
 if args.unit == "kj":
     coeff = 4.184
 else:
     coeff = 1.0
 
-buff = np.loadtxt("fes_{}.dat".format(0))
+buff = np.loadtxt("fes_{:04d}.dat".format(0))
 mask1 = mini < buff[:, 0]
 mask2 = buff[:, 0] < maxi
 mask = mask1 * mask2
@@ -76,11 +76,11 @@ Y = np.empty_like(X)
 for i in range(0, args.end, args.stride):
     # print(i, end=" ")
     cnt += 1
-    ax[0].plot(X, np.loadtxt("fes_{}.dat".format(i))[mask, 1]*coeff,
+    ax[0].plot(X, np.loadtxt("fes_{:04d}.dat".format(i))[mask, 1]*coeff,
                color=cm(cnt/num_data))
     if i >= args.average:
         cum += 1
-        Y += np.loadtxt("fes_{}.dat".format(i))[mask, 1]
+        Y += np.loadtxt("fes_{:04d}.dat".format(i))[mask, 1]
         ax[1].plot(X, Y*coeff/cum, color=cm(cnt/num_data))
 ax[0].set_ylabel(args.unit+"/mol", fontsize=14)
 ax[1].set_ylabel(args.unit+"/mol", fontsize=14)
@@ -88,11 +88,12 @@ ax[0].set_title("Cumulative FES", fontsize=16)
 ax[1].set_title("Cumulative average FES", fontsize=16)
 hilmin = 0
 if not args.mintozero:
-    hilmin = np.min(np.loadtxt("fes_{}.dat".format(args.end))[mask, 1]*coeff)
+    hilmin = np.min(np.loadtxt(
+        "fes_{:04d}.dat".format(args.end))[mask, 1]*coeff)
     print(hilmin)
     hilmax = 0
-ax[0].set_xlim(0, 300)
-ax[1].set_xlim(0, 300)
+ax[0].set_xlim(-70, 240)
+ax[1].set_xlim(-70, 240)
 ax[0].set_ylim(0, args.maximum)
 ax[1].set_ylim(-30, args.maximum)
 # カラーバー凡例をプロット

@@ -8,9 +8,10 @@ import argparse
 par = argparse.ArgumentParser(description="bar")
 par.add_argument('file', help='input file', nargs="+")
 par.add_argument('-o', '--outfile', help='output name')
-# par.add_argument('--onestep', action="store_true")
+par.add_argument('--eachpairs', action="store_true")
 args = par.parse_args()
 mark = ["-r", "-g", "-b", "-c", "-m", "-y"]
+color = ["red", "green", "blue", "cyan", "magenta", "yellow"]
 
 # 図の体裁
 plt_dic = {}
@@ -30,6 +31,8 @@ plt_dic['savefig.dpi'] = 300
 plt_dic['savefig.transparent'] = True
 plt.rcParams.update(plt_dic)
 fig, ax = plt.subplots()
+if args.eachpairs:
+    fig2, ax2 = plt.subplots()
 
 # 原子散乱因子と、散乱定数Q を設定
 lam = 1.5406
@@ -59,6 +62,9 @@ class XRD():
         with open(frname) as f:
             lines = np.array(f.readlines(), dtype=object)
         self.atoms = int(lines[3])
+        # ITEM: ATOMS id type element x y z vx vy vz
+        # -> Xin = 5 - 2 = 3
+        self.Xin = lines[8].split().index("x") - 2
         self.siatoms = int(self.atoms/3)
         self.oatoms = int(self.siatoms*2)
         lines = lines.reshape(-1, self.atoms+9)
@@ -102,9 +108,9 @@ class XRD():
             if i % 10 == 0:
                 print("{} progressing...".format(i))
             lx = self.L[i, 0, 1] - self.L[i, 0, 0]
-            dx = data[i, :, -3] - data[i, :, -3].reshape(-1, 1)
-            dy = data[i, :, -2] - data[i, :, -2].reshape(-1, 1)
-            dz = data[i, :, -1] - data[i, :, -1].reshape(-1, 1)
+            dx = data[i, :, self.Xin] - data[i, :, self.Xin].reshape(-1, 1)
+            dy = data[i, :, self.Xin+1] - data[i, :, self.Xin+1].reshape(-1, 1)
+            dz = data[i, :, self.Xin+2] - data[i, :, self.Xin+2].reshape(-1, 1)
             dx = dx - lx * np.round((dx/lx).astype(float))
             dy = dy - lx * np.round((dy/lx).astype(float))
             dz = dz - lx * np.round((dz/lx).astype(float))
@@ -155,6 +161,13 @@ class XRD():
         ax.set_xlabel('2theta')
         ax.set_ylabel('intensity')
         ax.set_title('all xrd peak')
+        if args.eachpairs:
+            ax2.plot(Ttheta, SS, "-", color=color[india])
+            ax2.plot(Ttheta, SO, "--", color=color[india])
+            ax2.plot(Ttheta, OO, ".", color=color[india])
+        ax2.set_xlabel('2theta')
+        ax2.set_ylabel('intensity')
+        ax2.set_title('eachatoms SS-, SO--, OO.')
 
 
 for indexing, frname in enumerate(args.file):

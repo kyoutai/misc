@@ -18,9 +18,11 @@ def Density(f):
     if len(f) == 1:
         body = open(f[0]).read()
         data = re.findall(
-            "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
-        # "Step           Time.+?Volume    \n(.+?)\nLoop time", body, re.DOTALL)
+            # "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
+            # "Step           Time.+?Volume    \n(.+?)\nLoop time", body, re.DOTALL)
+            "Step           Time.+?c_2    \n(.+?)\nLoop time", body, re.DOTALL)
         n = len(data)
+        print(data)
         print("{} times irradiation.".format(n/2))
         data = np.array(" ".join(data).split()).reshape((n, -1, 11)
                                                         ).astype(float)
@@ -42,15 +44,15 @@ def Density(f):
             # data = re.findall(
             #         "Step Dt.+?c_2 c_4 \n(.+?)\nLoop time", body, re.DOTALL)
             data = re.findall(
-                "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
-            # "Step           Time.+?Volume    \n(.+?)\nLoop time", body, re.DOTALL)
+                # "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
+                "Step           Time.+?Volume    \n(.+?)\nLoop time", body, re.DOTALL)
             n = len(data)
             data = np.array(" ".join(data).split())
             print(np.array(" ".join(data).split()).shape)
             print(args.files)
             # for i in data:
             #     print(data)
-            exit()
+            # exit()
 
             print("{} times irradiation.".format(n/2))
             data = np.array(" ".join(data).split()).reshape((n, -1, 11)

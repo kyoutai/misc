@@ -37,24 +37,24 @@ args = par.parse_args()
 def Density(files, ev1st):
     for idx, i in enumerate(files):
         body = open(i).read()
-        #data = re.findall(
-        #    "Step           Dt.+?c_2      \n(.+?)\nLoop time", body, re.DOTALL)
         data = re.findall(
-            "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
+           "Step           Dt.+?c_2      \n(.+?)\nLoop time", body, re.DOTALL)
+        # data = re.findall(
+        #     "Step Dt.+?c_2 \n(.+?)\nLoop time", body, re.DOTALL)
         data = np.array(" ".join(data).split()).reshape((-1, 11)
                                                         ).astype(float)
         enthalpy = np.mean(data[-50:, 8])
         density = np.mean(data[-50:, 9])
         x = idx * ev1st
-        #bx.plot(x, enthalpy*conv/args.natoms, "r.")
+        bx.plot(x, enthalpy*conv/args.natoms, "r.")
         ax.plot(x, density, "b.")
 
 
 conv = 1/23.060  # 1 eV = 23.060 kcal/mol
 fig, ax = plt.subplots()
-#bx = ax.twinx()
+bx = ax.twinx()
 Density(args.files, args.ev / args.natoms)
-#bx.set_ylabel('${\\rm Enthalpy\ eV/atom}$')
+bx.set_ylabel('${\\rm Enthalpy\ eV/atom}$')
 ax.set_xlabel('${\\rm Deposit\ energy\ eV/atom}$')
 ax.set_ylabel('${\\rm Density\ g/cm^3}$')
 ax.set_ylim(2.0, 2.7)

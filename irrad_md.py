@@ -162,7 +162,7 @@ class CIFDATA():
         self.alpha = alpha * np.pi / 180
         self.beta = beta * np.pi / 180
         self.gamma = gamma * np.pi / 180
-        obj = re.search("_atom_site_type_symbol(.+)", body, re.DOTALL)
+        obj = re.search("_atom_site_type_symbol(.+)\nloop_\n", body, re.DOTALL)
         data = obj.group(1)
         data = re.sub("\(\d+?\)", "", data)
         data = np.array(data.split(), dtype=object).reshape(-1, 8)
@@ -282,10 +282,10 @@ class LammpsData():
     def GetBinData(self, offset, f):
         f.seek(offset)
         head_size = 16 + 4 + 4*6 + 8*6 + 4 + 4
-        step, atoms = struct.unpack("ll", f.read(16)) # step, atoms
+        step, atoms = struct.unpack("ll", f.read(16))  # step, atoms
         triclnic = struct.unpack("i", f.read(4))[0]   # triclinic -> 1
         v = struct.unpack("6i", f.read(4*6))  # boundary
-        box = struct.unpack("6d", f.read(8*6)) # xlo, xhi, ylo, yhi, zlo, zhi
+        box = struct.unpack("6d", f.read(8*6))  # xlo, xhi, ylo, yhi, zlo, zhi
         M = np.array(box).reshape((3, 2))
         if triclnic == 1:
             box_tri = struct.unpack("3d", f.read(8*3))
@@ -305,7 +305,6 @@ class LammpsData():
             data[p: p+m, :] = d
             p = p + m
         return head_size + data_size, M, data
-            
 
     def Bin2Data(self, restart):
         """
@@ -353,8 +352,8 @@ class LammpsData():
         self.M = CalcMatrix(a, b, c, alpha, beta, gamma)
         # 0:id 1:type 2:charge 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:elem 10:label
         self.atoms = np.zeros((atoms, 11), dtype=object)
-        self.atoms[:, 0] = data[:, 0].astype(int) # id
-        self.atoms[:, 1] = data[:, 1].astype(int) # type
+        self.atoms[:, 0] = data[:, 0].astype(int)  # id
+        self.atoms[:, 1] = data[:, 1].astype(int)  # type
         self.atoms[:, 3:6] = data[:, 3:6].astype(float)  # x y z
         self.atoms[:, 6:9] = data[:, 6:9].astype(float)  # vx vy vz
         M_ = np.linalg.inv(self.M)
@@ -367,7 +366,6 @@ class LammpsData():
         for m in masses:
             self.atoms[self.atoms[:, 1] == m[0], 9] = m[2]
             self.atoms[self.atoms[:, 1] == m[0], 10] = m[2]
-            
 
     def UpdateTypeCharge(self):
         """
@@ -497,17 +495,17 @@ def AddIrrDamageCascade(d):
     # 全原子種の散乱断面積を規格化
     for k in FF_XS_p.keys():
         FF_XS_p[k] = FF_XS_p[k]/XS_sum
-    while True:    
+    while True:
         p = np.floor(np.random.random() * d.atoms.shape[0]).astype(int)
         # 規格化した散乱断面積以下なら選択
-        if np.random.random() < FF_XS_p[d.atoms[p, 9]]: 
+        if np.random.random() < FF_XS_p[d.atoms[p, 9]]:
             break
     # ランダムな角度を生成
     rnd = np.random.random(2)
     theta, phi = rnd[0] * np.pi, 2 * rnd[1] * np.pi
     d.knock_idx = p
     d.theta, d.phi = theta * 180 / np.pi, phi * 180 / np.pi
-    E = float(args.cascade[2]) * 1.602176462e-19  # eV -> J 
+    E = float(args.cascade[2]) * 1.602176462e-19  # eV -> J
     m = FF[d.atoms[p, 10]][0]          # g/mol
     m = m / 6.02214129e23 * 1e-3       # g/mol -> kg
     v_norm = np.sqrt(2 * E / m)        # m/s
@@ -515,14 +513,14 @@ def AddIrrDamageCascade(d):
     vx = v_norm * np.sin(theta) * np.cos(phi)
     vy = v_norm * np.sin(theta) * np.sin(phi)
     vz = v_norm * np.cos(theta)
-    d.atoms[p, 6:9] = [vx, vy, vz] # update velocity
+    d.atoms[p, 6:9] = [vx, vy, vz]  # update velocity
     d.irr_v = np.array([vx, vy, vz])  # Ang/fs
 
 
 def AddIrrDamageEquilibrium(d):
     data = open(args.equilib[0]).read()
     obj = re.search(".*PKA", data)
-    if obj is  None:
+    if obj is None:
         print("PKA atom is nothing.")
         print("PKA atom must be defined in {}.".format(args.equilib[0]))
         print("Please assign *.data file generated for cascade run.")
@@ -530,7 +528,7 @@ def AddIrrDamageEquilibrium(d):
     p = np.where(d.atoms[:, 0] == idx)[0]
     d.knock_idx = p
     # 運動エネルギーを変えた原子まわりのtypeを変更
-    radius = float(args.equilib[2]) # NVEの半径
+    radius = float(args.equilib[2])  # NVEの半径
     xyz = d.atoms[:, 3:6].astype(float)
     r = xyz[p, 0:3] - xyz[:, 0:3]
     r = np.dot(r - np.rint(r), d.M)
@@ -539,17 +537,17 @@ def AddIrrDamageEquilibrium(d):
     # damage zoneのlabelを*_irrにする
     for i in idx:
         d.atoms[i, 10] = d.atoms[i, 10] + "_irr"
-    
+
 
 def AddIrrDamageDebug(d):
     """
     特定の原子に特定の速度を与える。debug用
     """
     # 最近接原子方向に速度ベクトルを与える time stepを決めるdebug用
-    E = 600 # eV
-    NEV_radius = 20 # Ang
+    E = 600  # eV
+    NEV_radius = 20  # Ang
     args.irr = [E, NEV_radius]
-    p = 4091 # O lammps id=4092 Si lammps id=4089
+    p = 4091  # O lammps id=4092 Si lammps id=4089
     d.knock_idx = p
     # 再近接原子を探索して再近接原子のベクトルからthetaとphiを決める
     r = d.atoms[p, 3:6] - d.atoms[:, 3:6]
@@ -564,7 +562,7 @@ def AddIrrDamageDebug(d):
     theta = np.arccos(vec[2]/vec_norm)
     phi = np.sign(vec[1]) * np.arccos(vec[0]/np.sqrt(vec[1]**2 + vec[2]**2))
     # 運動エネルギーからkock-onする速度を計算
-    E = E * 1.602176462e-19         # eV -> J 
+    E = E * 1.602176462e-19         # eV -> J
     m = FF[d.atoms[p, 10]][0]       # g/mol
     m = m / 6.02214129e23 * 1e-3    # g/mol -> kg
     v_norm = np.sqrt(2 * E / m)     # m/s
@@ -572,7 +570,7 @@ def AddIrrDamageDebug(d):
     vx = v_norm * np.sin(theta) * np.cos(phi)
     vy = v_norm * np.sin(theta) * np.sin(phi)
     vz = v_norm * np.cos(theta)
-    d.atoms[p, 6:9] = [vx, vy, vz] # update velocity
+    d.atoms[p, 6:9] = [vx, vy, vz]  # update velocity
     # 運動エネルギーを変えた原子まわりのtypeを変更
     xyz = d.atoms[:, 3:6].astype(float)
     r = xyz[p, 0:3] - xyz[:, 0:3]
@@ -632,6 +630,7 @@ def Output(l):
     print("volume: {:.2f} Ang3".format(V))
     print("weight: {:.2f} g/mol".format(W))
     print("density: {:.3f} g/cm3".format(W / 6.02214129e23 / (V * 1e-24)))
+
 
 l = LammpsData()
 if args.ciffile is not None:
